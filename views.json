@@ -1,13 +1,54 @@
 [
   {
-    "name": "week",
-    "title": "This week",
-    "subtitle": "Construction Projects for Claude Code: what needs attention, rendered by npm run view",
+    "name": "site-board",
+    "title": "The site board",
+    "subtitle": "Construction Projects for Claude Code: what needs a decision, the payment clock, RFIs, submittals and delay notices. Rendered by npm run view.",
     "sections": [
       {
-        "title": "Needs attention",
-        "note": "TODO(author): point this at the industry's attention view (overdue, stuck, quiet).",
-        "sql": "select 'replace me' as item, 'TODO(author)' as why"
+        "title": "Needs a decision",
+        "note": "A missed payment schedule outranks everything: the Act has already made the full claim payable. Then schedules due, delay notices, overdue claims and the quiet leaks.",
+        "sql": "select replace(reason, '_', ' ') as what, label as record, who, place as at, days, detail from v_attention order by case reason when 'schedule_missed' then 1 when 'schedule_due' then 2 when 'delay_notice' then 3 when 'claim_overdue' then 4 when 'variation_unsubmitted' then 5 when 'rfi_overdue' then 6 when 'submittal_late' then 7 when 'insurance_expired' then 8 when 'cost_over' then 9 when 'defect_overdue' then 10 when 'retention_release' then 11 when 'diary_quiet' then 12 when 'tender_due' then 13 else 14 end, days desc nulls last"
+      },
+      {
+        "title": "Subcontractor claims on the clock",
+        "note": "Every claim gets a payment schedule before its deadline, with reasons for any difference.",
+        "sql": "select ref, company as subcontractor, project_ref as project, to_char(received_on, 'YYYY-MM-DD') as received, to_char(claimed_amount, 'FM$999,999,990') as claimed, to_char(schedule_due_on, 'YYYY-MM-DD') as schedule_due, days_left, state from v_sub_claims where state in ('MISSED', 'DUE NOW', 'awaiting schedule') order by schedule_due_on"
+      },
+      {
+        "title": "Open RFIs",
+        "sql": "select ref, project_ref as project, subject, coalesce(to_company, '') as with, to_char(due_on, 'YYYY-MM-DD') as due, case when time_impact then 'yes' else '' end as holds_work, state from v_rfis where status = 'open' order by due_on"
+      },
+      {
+        "title": "Submittals not yet approved",
+        "sql": "select ref, project_ref as project, title, coalesce(reviewer, '') as reviewer, to_char(required_by, 'YYYY-MM-DD') as needed_by, state from v_submittals where state <> 'approved' order by required_by nulls last"
+      },
+      {
+        "title": "Delays and notices",
+        "sql": "select ref, project_ref as project, cause, to_char(started_on, 'YYYY-MM-DD') as started, to_char(notice_due_on, 'YYYY-MM-DD') as notice_due, state from v_delays where status in ('open', 'notified') order by notice_due_on"
+      }
+    ]
+  },
+  {
+    "name": "money",
+    "title": "The money",
+    "subtitle": "Construction Projects for Claude Code: margin by project, the cost report, variations and claims. Rendered by npm run view.",
+    "sections": [
+      {
+        "title": "Forecast margin by project, worst first",
+        "sql": "select ref, project, client, to_char(revised_contract, 'FM$999,999,990') as contract, to_char(forecast_cost, 'FM$999,999,990') as forecast_cost, to_char(forecast_margin, 'FM$999,999,990') as margin, round(100.0 * forecast_margin / nullif(revised_contract, 0), 1) as margin_pct, status from v_projects where status in ('active', 'defects') order by forecast_margin / nullif(revised_contract, 0)"
+      },
+      {
+        "title": "Cost lines forecast over or near budget",
+        "sql": "select project_ref as project, cost_code as code, line, to_char(budget, 'FM$999,999,990') as budget, to_char(committed, 'FM$999,999,990') as committed, to_char(forecast_final, 'FM$999,999,990') as forecast_final, to_char(variance, 'FM$999,999,990') as variance, state from v_cost_report where state <> 'ok' and project_status = 'active' order by variance"
+      },
+      {
+        "title": "Variations not yet approved",
+        "note": "Only approved variations raise the claim ceiling. Instructed and unsubmitted is work you may never be paid for.",
+        "sql": "select ref, project_ref as project, title, coalesce(instruction_ref, '') as instruction, to_char(price, 'FM$999,999,990') as price, status, days_waiting from v_variations where status in ('instructed', 'submitted') order by days_waiting desc"
+      },
+      {
+        "title": "Progress claims unpaid",
+        "sql": "select ref, project_ref as project, client, to_char(served_on, 'YYYY-MM-DD') as served, to_char(amount, 'FM$999,999,990') as claimed, to_char(coalesce(scheduled_amount, amount), 'FM$999,999,990') as scheduled, to_char(outstanding, 'FM$999,999,990') as owed, to_char(payment_due_on, 'YYYY-MM-DD') as pay_by, state from v_head_claims where status <> 'paid' order by payment_due_on"
       }
     ]
   }

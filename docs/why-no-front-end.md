@@ -1,24 +1,25 @@
 # Why there is no front end
 
-Procore is a database with a subscription. The tables underneath it are ordinary: a few entities, a few relationships, a handful of workflows you repeat every week. What you pay for is the layer on top that lets people who do not write SQL get at those tables. Screens, filters, dashboards, forms.
+Procore is a database with an annual fee. The records underneath it are ordinary: projects, cost lines, subcontracts, claims, variations, RFIs, submittals, delays, defects and a diary. What you pay for is the layer of screens on top, priced by the dollar value of the work you build, so the fee rises with your turnover whether or not you use more of it.
 
-That layer used to be the whole product, because talking to a database was hard. It is not hard any more. Open this folder in Claude Code, describe what you want, and it writes the query, runs it, and explains the answer. Ask a question the dashboard never had a chart for and you still get an answer.
+That layer used to be the whole product, because talking to a database was hard. It is not hard any more. Open this folder in Claude Code, describe what you want, and it writes the query, runs it, and explains the answer. Ask a question the dashboard never had a report for and you still get an answer.
 
 ## What you gain
 
-- **Better answers.** A dashboard shows what the vendor decided to chart. Here you ask your own question, in your own words, and get it answered against your own data.
-- **No seats.** Everyone who needs to look can look. The bill does not grow with headcount.
-- **Your data in your Postgres.** Plain tables. Back them up, query them from anything, leave any time. There is no export step because there is nothing to leave.
-- **A process that matches you.** When your way of working changes, you add a command. You do not wait for a feature request to clear.
+- **Better answers.** A dashboard shows what the vendor decided to chart. Here you ask "which subcontractor claims need a schedule this week, in working days for their state" and get it.
+- **A fee that does not follow your turnover.** Win a bigger project and the bill for your own records stays the same.
+- **Your record in your Postgres.** Plain tables. Back them up, query them from anything, keep them for the full liability period. There is no export step because there is nothing to leave.
+- **Your rules, enforced.** The payment schedule reasons, the claim ceiling, the insurance gate: the system refuses the shortcut instead of reporting it next month.
 
 ## What you give up
 
-- **A visual board.** Stages are a table you ask about, not cards you drag.
-- **A phone app.** It runs where Claude Code runs.
+- **Drawings and markups.** Procore's drawing viewer, versions and markup are real features. Keep your drawings in your document system; this records the questions and decisions about them.
+- **A phone app for the site team.** Here the site manager writes the diary through an agent, or someone in the office does. A simple site screen is a customisation Enterprise DNA builds when it earns its keep.
+- **Subcontractor and client logins.** Procore lets subcontractors submit through a portal. Here claims arrive the way they already do, by email, and someone records them the same day.
 - **A vendor help desk.** This is open source. Enterprise DNA supports the installed version for businesses that want someone to call.
 
 ## Who this fits
 
-Small teams who already use Claude Code, or who would rather learn to ask than learn another interface. If your team needs a screen to look at all day, keep Procore. If you need the answers more than the screens, this is cheaper, faster and yours.
+Head contractors whose project managers and commercial manager live in the numbers, and who would rather ask than click. If your whole site team needs a screen on a phone all day, keep a screen for them. If you need the answers and the deadlines more than the screens, this is cheaper, faster and yours.
 
 Installed and run for you: https://enterprisedna.co/omni/instead-of/procore

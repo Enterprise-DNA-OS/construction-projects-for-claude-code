@@ -1,11 +1,84 @@
 [
   {
-    "name": "example",
-    "title": "TODO(author): the first document this industry must produce",
-    "for_each": "select gen_random_uuid() as id, 'Example' as name",
+    "name": "payment-schedule",
+    "title": "Payment schedule",
+    "for_each": "select s.sub_claim_id as id, (s.ref || ' ' || s.company) as name from v_sub_claims s where s.schedule_issued_on is not null order by s.schedule_issued_on desc",
     "file": "name",
     "sections": [
-      { "title": "Details", "sql": "select 'replace me' as item, $1::text as record_id" }
+      {
+        "title": "The payment claim this responds to",
+        "note": "A payment schedule under the Construction Contracts Act 2002 (NZ), the Security of Payment Act 1999 (NSW) or the Building Industry Fairness (Security of Payment) Act 2017 (QLD). It identifies the claim, states the amount we will pay, and where that is less than claimed, how it was calculated and why.",
+        "sql": "select s.ref as schedule_for, s.company as claimant, s.commitment_ref as subcontract, s.project_ref || ' ' || s.project as project, s.claim_no as claim_number, to_char(s.received_on, 'DD Month YYYY') as claim_received, to_char(s.claimed_amount, 'FM$999,999,990.00') as claimed_amount from v_sub_claims s where s.sub_claim_id = $1"
+      },
+      {
+        "title": "The scheduled amount",
+        "sql": "select to_char(s.scheduled_amount, 'FM$999,999,990.00') as scheduled_amount, to_char(s.retention_withheld, 'FM$999,999,990.00') as retention_withheld, to_char(s.scheduled_amount - s.retention_withheld, 'FM$999,999,990.00') as payable, to_char(s.payment_due_on, 'DD Month YYYY') as payment_due, to_char(s.schedule_issued_on, 'DD Month YYYY') as issued from v_sub_claims s where s.sub_claim_id = $1"
+      },
+      {
+        "title": "How it was calculated, and why it is less",
+        "note": "Where the scheduled amount equals the claim, no reasons are needed.",
+        "sql": "select to_char(s.claimed_amount - s.scheduled_amount, 'FM$999,999,990.00') as difference, coalesce(s.schedule_reasons, case when s.scheduled_amount >= s.claimed_amount then 'Paid as claimed.' else 'NO REASONS RECORDED: add them before this goes out.' end) as reasons from v_sub_claims s where s.sub_claim_id = $1"
+      },
+      {
+        "title": "The subcontract to date",
+        "sql": "select to_char(c.revised_value, 'FM$999,999,990') as subcontract_value, to_char(c.claimed, 'FM$999,999,990') as claimed_to_date, to_char(c.certified, 'FM$999,999,990') as certified_to_date, to_char(c.retention_withheld, 'FM$999,999,990') as retention_held_to_date from v_commitments c join v_sub_claims s on s.commitment_ref = c.ref where s.sub_claim_id = $1"
+      }
+    ]
+  },
+  {
+    "name": "progress-claim",
+    "title": "Progress claim",
+    "for_each": "select h.claim_id as id, (h.ref || ' ' || h.project) as name from v_head_claims h order by h.served_on desc",
+    "file": "name",
+    "sections": [
+      {
+        "title": "The claim",
+        "note": "A payment claim under the Construction Contracts Act 2002 (NZ) or the Security of Payment Act of the state where the work is done. It states the amount claimed, the period and the due date; the payer responds with payment or a payment schedule.",
+        "sql": "select h.ref as claim, h.claim_no as claim_number, h.project_ref || ' ' || h.project as project, h.client as to_the_client, to_char(h.served_on, 'DD Month YYYY') as served, to_char(h.amount, 'FM$999,999,990.00') as amount_claimed, to_char(h.payment_due_on, 'DD Month YYYY') as payment_due, case when h.jurisdiction = 'NSW' then case when h.supporting_statement then 'attached' else 'MISSING' end else 'not required' end as supporting_statement from v_head_claims h where h.claim_id = $1"
+      },
+      {
+        "title": "The position on this contract",
+        "note": "Claims to date never pass the contract value plus approved variations.",
+        "sql": "select to_char(p.contract_value, 'FM$999,999,990') as contract_value, to_char(p.approved_variations, 'FM$999,999,990') as approved_variations, to_char(p.revised_contract, 'FM$999,999,990') as revised_contract, to_char(p.claimed, 'FM$999,999,990') as claimed_to_date, to_char(p.paid, 'FM$999,999,990') as paid_to_date, to_char(p.retention_held_by_client, 'FM$999,999,990') as retention_held from v_projects p join v_head_claims h on h.project_ref = p.ref where h.claim_id = $1"
+      },
+      {
+        "title": "Approved variations",
+        "sql": "select v.ref, v.title as variation, coalesce(v.instruction_ref, '') as instruction, to_char(v.price, 'FM$999,999,990') as price, to_char(v.decided_on, 'YYYY-MM-DD') as approved, v.approved_by from v_variations v join v_head_claims h on h.project_ref = v.project_ref where h.claim_id = $1 and v.status = 'approved' order by v.decided_on"
+      }
+    ]
+  },
+  {
+    "name": "delay-notice",
+    "title": "Notice of delay and claim for extension of time",
+    "for_each": "select d.delay_id as id, (d.ref || ' ' || d.project) as name from v_delays d order by d.started_on desc",
+    "file": "name",
+    "sections": [
+      {
+        "title": "The delay",
+        "note": "Given under the extension of time clause of the head contract. Check the clause number and the notice address in your contract before it goes.",
+        "sql": "select d.ref as notice, d.project_ref || ' ' || d.project as project, d.cause, to_char(d.started_on, 'DD Month YYYY') as delay_began, coalesce(d.rfi_ref, '') as related_rfi, to_char(d.notice_due_on, 'DD Month YYYY') as notice_due, coalesce(d.days_claimed::text, 'to be assessed') as days_claimed from v_delays d where d.delay_id = $1"
+      },
+      {
+        "title": "The site diary for the period",
+        "sql": "select to_char(x.noted_on, 'YYYY-MM-DD') as date, coalesce(x.weather, '') as weather, coalesce(x.workers::text, '') as on_site, x.note from diary x join delays d on d.project_id = x.project_id where d.id = $1 and x.noted_on >= d.started_on order by x.noted_on"
+      }
+    ]
+  },
+  {
+    "name": "cost-report",
+    "title": "Cost report",
+    "for_each": "select p.project_id as id, (p.ref || ' ' || p.project) as name from v_projects p where p.status in ('active', 'defects') order by p.ref",
+    "file": "name",
+    "sections": [
+      {
+        "title": "The project",
+        "sql": "select p.ref, p.project, p.client, to_char(p.revised_contract, 'FM$999,999,990') as revised_contract, to_char(p.claimed, 'FM$999,999,990') as claimed, to_char(p.forecast_cost, 'FM$999,999,990') as forecast_cost, to_char(p.forecast_margin, 'FM$999,999,990') as forecast_margin, to_char(p.pending_variations, 'FM$999,999,990') as variations_pending from v_projects p where p.project_id = $1"
+      },
+      {
+        "title": "By cost code",
+        "note": "Committed is executed subcontracts plus approved variations on them. Forecast final never sits below the budget or the money already promised.",
+        "sql": "select r.cost_code as code, r.line, to_char(r.budget, 'FM$999,999,990') as budget, to_char(r.committed, 'FM$999,999,990') as committed, to_char(r.pending, 'FM$999,999,990') as pending, to_char(r.actual, 'FM$999,999,990') as actual, to_char(r.forecast_final, 'FM$999,999,990') as forecast_final, to_char(r.variance, 'FM$999,999,990') as variance, r.state from v_cost_report r where r.project_id = $1 order by r.cost_code"
+      }
     ]
   }
 ]
